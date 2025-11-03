@@ -1,10 +1,11 @@
 import os
 import re
 import httpx
+from uuid import uuid4
 from dotenv import load_dotenv
 from typing import Optional
 from fastapi import FastAPI
-from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, OutgoingMessage, MessagePart
+from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, ExecuteParams, MessageCard, MessagePart
 
 
 load_dotenv()
@@ -92,44 +93,86 @@ async def get_ai_review(diff_text: str) -> str:
         print(f"An unexpected error calling Gemini: {error}")
         return "Error: The AI review failed."
     
+def create_error_response(request_id: str, code: int, error_message: str) -> JSONRPCResponse:
+    """
+    Creates a JSON-RPC error response.
+    """
+    return JSONRPCResponse(
+        id=request_id,
+        error={"code": code, "message": error_message}
+        )
+
+    
 @app.post("/api/v1/agent/invoke")
 async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
     """
     Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
     """
     try:
-        # Get the user's message from the request
-        user_text = request.params.message.parts[0].text
+        if request.method != "execute":
+            return create_error_response(
+                request.id, -32601,
+                f"Method not found. This agent only supports 'execute', not '{request.method}'."
+            )
         
-        # Find the PR link in the message
-        pr_url = extract_pr_url(user_text)
-        
-        if not pr_url:
-            review_text = "I couldn't find a GitHub PR link in your message. Please paste the full URL."
-        else:
-            # Get the .diff text from GitHub
-            diff_text = await get_github_pr_diff(pr_url)
-            
-            # Get AI review
-            if "Error:" not in diff_text:
-                review_text = await get_ai_review(diff_text)
-            else:
-                review_text = diff_text  # Pass the error message back to user
+        # Parse and validate incoming request
+        params = ExecuteParams.model_validate(request.params)
 
-        # Create successful A2A JSON-RPC response
-        response_message = OutgoingMessage(role="agent", parts=[MessagePart(type="text", text=review_text)])
-        task_status = TaskStatus(state="completed", message=response_message)
-        task_result = TaskResult(status=task_status)
+        if not params.messages:
+            return create_error_response(request.id, -32602, "Invalid params: 'messages' array cannot be empty.")
+            
         
-        return JSONRPCResponse(result=task_result, id=request.id)
+        history = params.messages
+        last_message = history[-1]
+        
+        if last_message.role != "user" or not last_message.parts:
+            return create_error_response(request.id, -32602, "Invalid params: Last message must be from 'user' and have parts.")
+            
+        user_text = last_message.parts[0].text
+        
+        context_id = params.contextId
+        task_id = params.taskId or "task-" + str(uuid4())
+        
+        pr_url = extract_pr_url(user_text)
+        if not pr_url:
+            raise ValueError("I couldn't find a GitHub PR link in your message.")
+
+        diff_text = await get_github_pr_diff(pr_url)
+        if "Error:" in diff_text:
+            raise ValueError(diff_text)
+
+        review_text = await get_ai_review(diff_text)
+        if "Error:" in review_text:
+            raise ValueError(review_text)
+
+        # Create the JSON-RPC Response
+        chat_message = MessageCard(
+            role="agent",
+            parts=[MessagePart(kind="text", text="Here is the PR review you requested:")]
+        )
+
+        artifact = Artifact(
+            name="review",
+            parts=[MessagePart(kind="text", text=review_text)]
+        )
+        status = TaskStatus(state="completed", message=chat_message)
+        result = TaskResult(
+            id=task_id,
+            contextId=context_id,
+            status=status,
+            artifacts=[artifact],
+            history=history
+        )
+        return JSONRPCResponse(id=request.id, result=result)
 
     except Exception as error:
-        # Create error response 
-        print(f"An unexpected error occurred: {error}")
-        error_message = OutgoingMessage(role="agent", parts=[MessagePart(type="text", text=f"An internal error occurred: {error}")])
-        task_status = TaskStatus(state="failed", message=error_message)
-        task_result = TaskResult(status=task_result)
-        return JSONRPCResponse(result=task_result, id=request.id)
+        # Create JSON-RPC Error Response
+        print(f"An unhandled error occurred: {error}")
+        return create_error_response(
+            request.id, -32000,
+            f"An internal server error occurred: {error}"
+        )
+    
 
 @app.get("/")
 def read_root():
