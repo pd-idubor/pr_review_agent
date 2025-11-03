@@ -141,7 +141,7 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
         if "Error:" in diff_text:
             raise ValueError(diff_text)
 
-        review_text = "This is a fast, hard-coded test reply. If you see this, the AI call is the problem." #await get_ai_review(diff_text)
+        review_text = await get_ai_review(diff_text)
         if "Error:" in review_text:
             raise ValueError(review_text)
 
