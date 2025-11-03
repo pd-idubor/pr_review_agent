@@ -1,4 +1,4 @@
-# :robot_face: Telex.im AI PR Review Bot
+# 🤖 Telex.im PR Review Agent
 
 An AI agent built with Python and FastAPI, designed to integrate with the `Telex.im` A2A (Agent-to-Agent) protocol.
 
