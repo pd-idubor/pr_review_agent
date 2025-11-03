@@ -4,7 +4,7 @@ import httpx
 from dotenv import load_dotenv
 from typing import Optional
 from fastapi import FastAPI
-from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, MessageCard, MessagePart
+from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, OutgoingMessage, MessagePart
 
 
 load_dotenv()
@@ -117,7 +117,7 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
                 review_text = diff_text  # Pass the error message back to user
 
         # Create successful A2A JSON-RPC response
-        response_message = MessageCard(role="agent", parts=[MessagePart(type="text", text=review_text)])
+        response_message = OutgoingMessage(role="agent", parts=[MessagePart(type="text", text=review_text)])
         task_status = TaskStatus(state="completed", message=response_message)
         task_result = TaskResult(status=task_status)
         
@@ -126,7 +126,7 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
     except Exception as error:
         # Create error response 
         print(f"An unexpected error occurred: {error}")
-        error_message = MessageCard(role="agent", parts=[MessagePart(type="text", text=f"An internal error occurred: {error}")])
+        error_message = OutgoingMessage(role="agent", parts=[MessagePart(type="text", text=f"An internal error occurred: {error}")])
         task_status = TaskStatus(state="failed", message=error_message)
         task_result = TaskResult(status=task_result)
         return JSONRPCResponse(result=task_result, id=request.id)

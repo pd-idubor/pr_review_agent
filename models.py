@@ -1,32 +1,42 @@
 from pydantic import BaseModel, Field
-from typing import List, Literal
+from typing import List, Literal, Tuple
 from uuid import uuid4
 
 
 # Request Model
 class MessagePart(BaseModel):
-    type: Literal["text"]
+    kind: Literal["text"]
     text: str
 
+class DataPart(BaseModel):
+    kind: Literal["data"]
+    data: List[MessagePart]
 
-class MessageCard(BaseModel):
+class IncomingMessage(BaseModel):
     kind: Literal["message"] = "message"
     role: Literal["user", "agent", "system"]
-    parts: List[MessagePart]
+    parts: Tuple[MessagePart, DataPart]
+    messageId: str
+
 
 class TaskParams(BaseModel):
-    message: MessageCard
+    message: IncomingMessage
   
 class JSONRPCRequest(BaseModel):
     jsonrpc: Literal["2.0"]
     id: str
-    method: str
+    method: Literal["message/send", "execute"]
     params: TaskParams
 
 # Response Model
+class OutgoingMessage(BaseModel):
+    kind: Literal["message"] = "message"
+    role: Literal["agent"]
+    parts: List[MessagePart]
+
 class TaskStatus(BaseModel):
     state: Literal["completed", "failed"]
-    message: MessageCard
+    message: OutgoingMessage
 
 class TaskResult(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
