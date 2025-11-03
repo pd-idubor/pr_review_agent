@@ -1,0 +1,20 @@
+[project]
+name = "pr-review-agent"
+version = "0.1.0"
+description = "AI agent to reveiw Github PRs."
+authors = [
+    {name = "Precious I"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi (>=0.120.4,<0.121.0)",
+    "pydantic (>=2.12.3,<3.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "uvicorn[standard] (>=0.38.0,<0.39.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
