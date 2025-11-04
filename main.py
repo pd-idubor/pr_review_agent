@@ -102,13 +102,40 @@ def create_error_response(request_id: str, code: int, error_message: str) -> JSO
         error={"code": code, "message": error_message}
         )
 
+@app.post("/api/v1/agent/invoke")
+async def echo_and_log_request(request):
+    """
+    This endpoint bypasses all Pydantic validation,
+    logs the raw JSON, and then returns that JSON as the response.
+    """
+    body = {}
+    try:
+        # Get the raw JSON body
+        body = await request.json()
+        import json
+        
+        # --- This is the most important part ---
+        print("--- ⭐️ RAW TELEX JSON ⭐️ ---")
+        print(json.dumps(body, indent=2))
+        print("------------------------------")
+        # --------------------------------------
+
+        # Return the JSON we received
+        return body
     
+    except Exception as e:
+        # If the request isn't even valid JSON
+        error_message = f"Failed to parse incoming JSON: {e}"
+        print(f"!!! {error_message} !!!")
+        return {"error": error_message}
+    """
 @app.post("/api/v1/agent/invoke")
 async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
     """
-    Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
+    # Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
     """
 
+    
     try:
         
         if request.method != "message/send":
@@ -166,7 +193,7 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
             request.id, -32000,
             f"An internal server error occurred: {e}"
         )
-   
+   """
     """ 
     try:
         if request.method != "message/send":
