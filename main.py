@@ -5,7 +5,7 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from typing import Optional
 from fastapi import FastAPI
-from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, ExecuteParams, MessageCard, MessagePart
+from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, ExecuteParams, MessageCard, MessagePart, pushNotificationConfig
 
 
 load_dotenv()
@@ -108,8 +108,27 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
     """
     Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
     """
+    raw_body = {}
     try:
-        if request.method != "execute":
+
+        raw_body = await request.json()
+        print("--- RAW INCOMING JSON FROM TELEX ---")
+        import json
+        print(json.dumps(raw_body, indent=2))
+        print("-------------------------------------")
+
+        parsed_request = JSONRPCRequest.model_validate(raw_body)
+    
+    except Exception as e:
+        print("PYDANTIC VALIDATION FAILED (422)")
+        print(f"Error: {e}")
+        print("-------------------------------------")
+        
+        return create_error_response("validation-error", -32602, "Pydantic validation failed.")
+
+    req_data = parsed_request
+    try:
+        if not request.method != "execute":
             return create_error_response(
                 request.id, -32601,
                 f"Method not found. This agent only supports 'execute', not '{request.method}'."
@@ -121,6 +140,9 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
         if not params.messages:
             return create_error_response(request.id, -32602, "Invalid params: 'messages' array cannot be empty.")
             
+        push_config = params.configuration.pushNotificationConfig
+        if not push_config or not push_config.url:
+            return create_error_response(req_data.id, -32602, "Invalid params: PushNotificationConfig.url is required.")
         
         history = params.messages
         last_message = history[-1]
