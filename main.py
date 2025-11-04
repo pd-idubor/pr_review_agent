@@ -5,7 +5,7 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from typing import Optional
 from fastapi import FastAPI
-from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, ExecuteParams, MessageCard, MessagePart, PushNotificationConfig
+from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, TaskParams, MessageCard, MessagePart, PushNotificationConfig
 
 
 load_dotenv()
@@ -108,36 +108,77 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
     """
     Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
     """
-    raw_body = {}
+
     try:
-
-        raw_body = await request.json()
-        print("--- RAW INCOMING JSON FROM TELEX ---")
-        import json
-        print(json.dumps(raw_body, indent=2))
-        print("-------------------------------------")
-
-        parsed_request = JSONRPCRequest.model_validate(raw_body)
-    
-    except Exception as e:
-        print("PYDANTIC VALIDATION FAILED (422)")
-        print(f"Error: {e}")
-        print("-------------------------------------")
         
-        return create_error_response("validation-error", -32602, "Pydantic validation failed.")
-
-    req_data = parsed_request
-    try:
-        if not request.method != "execute":
+        if request.method != "message/send":
             return create_error_response(
                 request.id, -32601,
-                f"Method not found. This agent only supports 'execute', not '{request.method}'."
+                f"Method not found. This agent only supports 'message/send', not '{request.method}'."
+            )
+        
+        params = TaskParams.model_validate(request.params)
+
+        if not params.message or not params.message.parts:
+            return create_error_response(request.id, -32602, "Invalid params: 'message.parts' is missing.")
+        
+        user_text = params.message.parts[0].text
+        
+        pr_url = extract_pr_url(user_text)
+        if not pr_url:
+            raise ValueError("I couldn't find a GitHub PR link in your message.")
+
+        diff_text = await get_github_pr_diff(pr_url)
+        if "Error:" in diff_text:
+            raise ValueError(diff_text)
+
+        review_text = await get_ai_review(diff_text)
+        if "Error:" in review_text:
+            raise ValueError(review_text)
+
+        chat_message = MessageCard(
+            role="agent",
+            parts=[MessagePart(kind="text", text="Here is the PR review you requested:")]
+        )
+
+        artifact = Artifact(
+            name="review",
+            parts=[MessagePart(kind="text", text=review_text)]
+        )
+        
+        status = TaskStatus(state="completed", message=chat_message)
+
+        
+        result = TaskResult(
+            id=params.message.taskId or "task-" + str(uuid4()),
+            contextId=params.message.messageId,
+            status=status,
+            artifacts=[artifact],
+            history=[]
+        )
+        
+        return JSONRPCResponse(id=request.id, result=result)
+
+    except Exception as e:
+        # --- 5. Build the JSON-RPC Error Response ---
+        print(f"An unhandled error occurred: {e}")
+        return create_error_response(
+            request.id, -32000,
+            f"An internal server error occurred: {e}"
+        )
+   
+    """ 
+    try:
+        if request.method != "message/send":
+            return create_error_response(
+                request.id, -32601,
+                f"Method not found. This agent only supports 'message/send', not '{request.method}'."
             )
         
         # Parse and validate incoming request
-        params = ExecuteParams.model_validate(request.params)
-
-        if not params.messages:
+        params = TaskParams.model_validate(request.params)
+s
+        if not params.message or not params.message.parts:
             return create_error_response(request.id, -32602, "Invalid params: 'messages' array cannot be empty.")
             
         push_config = params.configuration.pushNotificationConfig
@@ -194,7 +235,7 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
             request.id, -32000,
             f"An internal server error occurred: {error}"
         )
-    
+"""    
 
 @app.get("/")
 def read_root():
