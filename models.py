@@ -18,16 +18,16 @@ class MessageCard(BaseModel):
     taskId: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
-# class PushNotificationConfig(BaseModel):
-#     url: str
-#     token: Optional[str] = None
-#     authentication: Optional[Dict[str, Any]] = None
+class PushNotificationConfig(BaseModel):
+    url: str
+    token: Optional[str] = None
+    authentication: Optional[Dict[str, Any]] = None
 
 class MessageConfig(BaseModel):
     blocking: bool = True
     acceptedOutputModes: List[str] = ["text/plain", "image/png"]
-    # historyLength: Optional[int] = None
-    # pushNotificationConfig: Optional[PushNotificationConfig] = None
+    historyLength: Optional[int] = None
+    pushNotificationConfig: Optional[PushNotificationConfig] = None
 
 class TaskParams(BaseModel):
     message: MessageCard
