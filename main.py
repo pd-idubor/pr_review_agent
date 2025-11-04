@@ -5,7 +5,7 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from typing import Optional
 from fastapi import FastAPI
-from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, ExecuteParams, MessageCard, MessagePart, pushNotificationConfig
+from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, ExecuteParams, MessageCard, MessagePart, PushNotificationConfig
 
 
 load_dotenv()
