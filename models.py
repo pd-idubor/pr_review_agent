@@ -7,7 +7,7 @@ from datetime import datetime
 class MessagePart(BaseModel):
     kind: Literal["text", "data", "file"]
     text: Optional[str] = None
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[Any] = None
     file_url: Optional[str] = None
 
 class MessageCard(BaseModel):
@@ -16,21 +16,22 @@ class MessageCard(BaseModel):
     parts: List[MessagePart]
     messageId: str = Field(default_factory=lambda: str(uuid4()))
     taskId: Optional[str] = None
-    # metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
-class PushNotificationConfig(BaseModel):
-    url: str
-    token: Optional[str] = None
-    authentication: Optional[Dict[str, Any]] = None
+# class PushNotificationConfig(BaseModel):
+#     url: str
+#     token: Optional[str] = None
+#     authentication: Optional[Dict[str, Any]] = None
 
 class MessageConfig(BaseModel):
-    blocking: bool
-    acceptedOutputModes: List[str]
-    pushNotificationConfig: Optional[PushNotificationConfig] = None
+    blocking: bool = True
+    acceptedOutputModes: List[str] = ["text/plain", "image/png"]
+    # historyLength: Optional[int] = None
+    # pushNotificationConfig: Optional[PushNotificationConfig] = None
 
 class TaskParams(BaseModel):
     message: MessageCard
-    configuration: MessageConfig
+    configuration: MessageConfig = Field(default_factory=lambda: MessageConfig)
 
 class ExecuteParams(BaseModel):
     contextId: Optional[str] = None
@@ -44,8 +45,8 @@ class JSONRPCRequest(BaseModel):
     params: TaskParams | ExecuteParams
 
 class TaskStatus(BaseModel):
-    state: Literal["working", "completed", "failed"]
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    state: Literal["working", "completed", "input-required" "failed"]
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     message: Optional[MessageCard] = None
 
 class Artifact(BaseModel):
@@ -54,8 +55,8 @@ class Artifact(BaseModel):
     parts: List[MessagePart]
 
 class TaskResult(BaseModel):
-    id: str
-    contextId: str
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    contextId: str = Field(default_factory=lambda: str(uuid4()))
     status: TaskStatus
     artifacts: List[Artifact] = []
     history: List[MessageCard] = []

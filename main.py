@@ -4,7 +4,7 @@ import httpx
 from uuid import uuid4
 from dotenv import load_dotenv
 from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, TaskParams, MessageCard, MessagePart #, PushNotificationConfig
 
 
@@ -90,7 +90,7 @@ def create_error_response(request_id: str, code: int, error_message: str) -> JSO
         )
 
 @app.post("/api/v1/agent/invoke")
-async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
+async def handle_agent_request(request: Request) -> JSONRPCResponse:
     """
     Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
     """
