@@ -139,7 +139,7 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
             contextId=params.message.messageId,
             status=status,
             artifacts=[artifact],
-            history=[]
+            history=[params.message]
         )
         
         return JSONRPCResponse(id=request.id, result=result)
@@ -149,76 +149,7 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
         return create_error_response(
             request.id, -32000,
             f"An internal server error occurred: {e}"
-        )
-    """ 
-    try:
-        if request.method != "message/send":
-            return create_error_response(
-                request.id, -32601,
-                f"Method not found. This agent only supports 'message/send', not '{request.method}'."
-            )
-        
-        # Parse and validate incoming request
-        params = TaskParams.model_validate(request.params)
-s
-        if not params.message or not params.message.parts:
-            return create_error_response(request.id, -32602, "Invalid params: 'messages' array cannot be empty.")
-            
-        push_config = params.configuration.pushNotificationConfig
-        if not push_config or not push_config.url:
-            return create_error_response(req_data.id, -32602, "Invalid params: PushNotificationConfig.url is required.")
-        
-        history = params.messages
-        last_message = history[-1]
-        
-        if last_message.role != "user" or not last_message.parts:
-            return create_error_response(request.id, -32602, "Invalid params: Last message must be from 'user' and have parts.")
-            
-        user_text = last_message.parts[0].text
-        
-        context_id = params.contextId
-        task_id = params.taskId or "task-" + str(uuid4())
-        
-        pr_url = extract_pr_url(user_text)
-        if not pr_url:
-            raise ValueError("I couldn't find a GitHub PR link in your message.")
-
-        diff_text = await get_github_pr_diff(pr_url)
-        if "Error:" in diff_text:
-            raise ValueError(diff_text)
-
-        review_text = await get_ai_review(diff_text)
-        if "Error:" in review_text:
-            raise ValueError(review_text)
-
-        # Create the JSON-RPC Response
-        chat_message = MessageCard(
-            role="agent",
-            parts=[MessagePart(kind="text", text="Here is the PR review you requested:")]
-        )
-
-        artifact = Artifact(
-            name="review",
-            parts=[MessagePart(kind="text", text=review_text)]
-        )
-        status = TaskStatus(state="completed", message=chat_message)
-        result = TaskResult(
-            id=task_id,
-            contextId=context_id,
-            status=status,
-            artifacts=[artifact],
-            history=history
-        )
-        return JSONRPCResponse(id=request.id, result=result)
-
-    except Exception as error:
-        # Create JSON-RPC Error Response
-        print(f"An unhandled error occurred: {error}")
-        return create_error_response(
-            request.id, -32000,
-            f"An internal server error occurred: {error}"
-        )
-"""    
+        )   
 
 @app.get("/")
 def read_root():

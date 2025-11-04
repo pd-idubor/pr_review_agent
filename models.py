@@ -14,8 +14,8 @@ class MessageCard(BaseModel):
     kind: Literal["message"] = "message"
     role: Literal["user", "agent", "system"]
     parts: List[MessagePart]
-    messageId: str
-    # taskId: Optional[str] = None
+    messageId: str = Field(default_factory=lambda: str(uuid4()))
+    taskId: Optional[str] = None
     # metadata: Optional[Dict[str, Any]] = None
 
 class PushNotificationConfig(BaseModel):
