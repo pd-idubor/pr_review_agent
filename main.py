@@ -5,7 +5,7 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from typing import Optional
 from fastapi import FastAPI
-from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, TaskParams, MessageCard, MessagePart, PushNotificationConfig
+from models import JSONRPCRequest, JSONRPCResponse, TaskResult, TaskStatus, Artifact, TaskParams, MessageCard, MessagePart #, PushNotificationConfig
 
 
 load_dotenv()
@@ -58,30 +58,17 @@ async def get_ai_review(diff_text: str) -> str:
     system_prompt = "You are an expert code reviewer. Review the following code diff. Focus on potential bugs, style issues, or missing error handling. Be concise and provide feedback in 3 bullet points."
     
     json_data = {
-        "system_instruction": {
-            "parts": [
-                {"text": system_prompt}
-            ]
-        },
-        "contents": [
-            {
-                "parts": [
-                    {"text": diff_text}
-                ]
-            }
-        ]
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"parts": [{"text": diff_text}]}]
     }
     
-    headers = {
-        "Content-Type": "application/json"
-    }
+    headers = {"Content-Type": "application/json"}
 
     try:
         response = await client.post(api_url, headers=headers, json=json_data, timeout=30.0)
         response.raise_for_status()
         
         data = response.json()
-        
         review_text = data['candidates'][0]['content']['parts'][0]['text']
         return review_text
     
@@ -103,39 +90,10 @@ def create_error_response(request_id: str, code: int, error_message: str) -> JSO
         )
 
 @app.post("/api/v1/agent/invoke")
-async def echo_and_log_request(request):
-    """
-    This endpoint bypasses all Pydantic validation,
-    logs the raw JSON, and then returns that JSON as the response.
-    """
-    body = {}
-    try:
-        # Get the raw JSON body
-        body = await request.json()
-        import json
-        
-        # --- This is the most important part ---
-        print("--- ⭐️ RAW TELEX JSON ⭐️ ---")
-        print(json.dumps(body, indent=2))
-        print("------------------------------")
-        # --------------------------------------
-
-        # Return the JSON we received
-        return body
-    
-    except Exception as e:
-        # If the request isn't even valid JSON
-        error_message = f"Failed to parse incoming JSON: {e}"
-        print(f"!!! {error_message} !!!")
-        return {"error": error_message}
-    """
-@app.post("/api/v1/agent/invoke")
 async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
     """
-    # Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
+    Main Enpoint to handle incoming A2A JSON-RPC requests for PR reviews.
     """
-
-    
     try:
         
         if request.method != "message/send":
@@ -187,13 +145,11 @@ async def handle_agent_request(request: JSONRPCRequest) -> JSONRPCResponse:
         return JSONRPCResponse(id=request.id, result=result)
 
     except Exception as e:
-        # --- 5. Build the JSON-RPC Error Response ---
         print(f"An unhandled error occurred: {e}")
         return create_error_response(
             request.id, -32000,
             f"An internal server error occurred: {e}"
         )
-   """
     """ 
     try:
         if request.method != "message/send":

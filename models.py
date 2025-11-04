@@ -14,9 +14,9 @@ class MessageCard(BaseModel):
     kind: Literal["message"] = "message"
     role: Literal["user", "agent", "system"]
     parts: List[MessagePart]
-    messageId: str = Field(default_factory=lambda: str(uuid4()))
-    taskId: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    messageId: str
+    # taskId: Optional[str] = None
+    # metadata: Optional[Dict[str, Any]] = None
 
 class PushNotificationConfig(BaseModel):
     url: str
@@ -24,13 +24,13 @@ class PushNotificationConfig(BaseModel):
     authentication: Optional[Dict[str, Any]] = None
 
 class MessageConfig(BaseModel):
-    blocking: bool = True
-    acceptedOutputModes: List[str] = ["text/plain", "image/png", "image/svg+xml"]
+    blocking: bool
+    acceptedOutputModes: List[str]
     pushNotificationConfig: Optional[PushNotificationConfig] = None
 
 class TaskParams(BaseModel):
     message: MessageCard
-    configuration: MessageConfig = Field(default_factory=MessageConfig)
+    configuration: MessageConfig
 
 class ExecuteParams(BaseModel):
     contextId: Optional[str] = None
@@ -44,7 +44,7 @@ class JSONRPCRequest(BaseModel):
     params: TaskParams | ExecuteParams
 
 class TaskStatus(BaseModel):
-    state: Literal["working", "completed", "input-required", "failed"]
+    state: Literal["working", "completed", "failed"]
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     message: Optional[MessageCard] = None
 
